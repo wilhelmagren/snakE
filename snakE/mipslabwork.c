@@ -163,10 +163,10 @@ void check_page(){
   }
 }
 
-void display_clear(int amount){
+void display_clear(int amount, uint8_t screen[]){
   int i;
   for(i = 0; i < amount*WIDTH; i += 32){
-    display_image(i, death);
+    display_image(i, screen);
   }
 }
 
@@ -175,18 +175,18 @@ void game_over(){
     int i;
     int but;
     for(i = 0; i < WIDTH*NUMBER_OF_PAGES; i += WIDTH){
-      display_image(i, death);
+      display_image(i, clear);
     }
     while(1){
       display_update();
       display_string(0, "GAME OVER!");
       display_string(2, "TO RESTART:");
-      display_string(3, "PRESS BTN1");
+      display_string(3, "PRESS BUTTON 1");
 
       if(but = btn1()){
         snakeX = 15;
         snakeY = 15;
-        display_clear(NUMBER_OF_PAGES*2);
+        display_clear(NUMBER_OF_PAGES*2,death);
         break;
       }
     }
@@ -204,7 +204,7 @@ void labwork( void )
   game_over();
   check_page();
   buttons();
-  display_clear(NUMBER_OF_PAGES);
+  display_clear(NUMBER_OF_PAGES/2,clear);
   snake_clear();
   move_constant();
   get_posSnake();
