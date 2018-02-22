@@ -18,13 +18,17 @@
 #define WIDTH 32
 #define SIZE_OF_PAGE HEIGHT*WIDTH
 #define PIXEL_UNIT 8
+#define NUMBER_OF_PAGES 2
 
 int difficulty = 500;
-int snakeX = 16;
-int snakeY = 2;
+int snakeX = 15;
+int snakeY = 15;
+//int foodX = 15;
+//int foodY = 15;
 int velocity;
 int posArray;
-
+int posPage;
+int score = 0;
 /* Interrupt Service Routine */
 void user_isr( void ){
   return;
@@ -38,11 +42,10 @@ void labinit( void ){
   TRISE = TRISE & 0x0fe0;
   TRISF = TRISF & 0x2;
 
-
   return;
 }
 
-int get_pos(){
+int get_posSnake(){
   int i;
   for(i = 0; i < SIZE_OF_PAGE; i++){
     if(display[i] != 0)
@@ -70,7 +73,7 @@ void move_constant(){
     snakeY++;
 }
 
-void display_clear(){
+void snake_clear(){
   int j;
   for(j = 0; j < SIZE_OF_PAGE; j++){
     if(j != posArray)
@@ -130,17 +133,62 @@ void buttons(){
     }
   }
 
-  if(but = but1()){
+  if(but = btn1()){
     move_Up();
 
 
   }
 }
 
+void check_page(){
+  switch (snakeX/WIDTH){
+    case 0:
+      posPage = 0;
+      break;
+
+    case 1:
+      posPage = WIDTH;
+      snakeY -= WIDTH;
+      break;
+
+    case 2:
+      posPage = WIDTH*2;
+      snakeY -= WIDTH;
+      break;
+
+    case 3:
+      posPage = WIDTH*3;
+      snakeY -= WIDTH;
+      break;
+  }
+}
+
+void display_clear(int amount){
+  int i;
+  for(i = 0; i < amount*WIDTH; i += 32){
+    display_image(i, death);
+  }
+}
+
 void game_over(){
   if(snakeX < 0 || snakeX > 31 || snakeY < 0 || snakeY > 31){
+    int i;
+    int but;
+    for(i = 0; i < WIDTH*NUMBER_OF_PAGES; i += WIDTH){
+      display_image(i, death);
+    }
     while(1){
-      display_image(0, death);
+      display_update();
+      display_string(0, "GAME OVER!");
+      display_string(2, "TO RESTART:");
+      display_string(3, "PRESS BTN1");
+
+      if(but = btn1()){
+        snakeX = 15;
+        snakeY = 15;
+        display_clear(NUMBER_OF_PAGES*2);
+        break;
+      }
     }
   }
 }
@@ -154,12 +202,15 @@ void labwork( void )
   set_difficulty();
   delay(difficulty);
   game_over();
+  check_page();
   buttons();
-  display_clear();
+  display_clear(NUMBER_OF_PAGES);
+  snake_clear();
   move_constant();
-  get_pos();
+  get_posSnake();
   set_pixel(snakeX, snakeY);
-  display_image(0,display);
+  //food();
+  display_image(posPage,display);
   //move_snakeConstant();
   //display_image(posPage,display);
   //move_nextPage();

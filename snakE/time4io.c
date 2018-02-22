@@ -14,7 +14,7 @@ int getbtns(void){
 
 }
 
-int but1(void){
+int btn1(void){
 
   return ((PORTF) & 0x2);
 }

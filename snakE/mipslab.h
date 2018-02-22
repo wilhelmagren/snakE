@@ -40,6 +40,7 @@ extern const uint8_t font[128*8];
 /* Declare bitmap array containing icon */
 extern uint8_t display[128];
 extern uint8_t death[128];
+extern uint8_t clear[128];
 /* Declare text buffer for display output */
 extern char textbuffer[4][16];
 
