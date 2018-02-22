@@ -13,3 +13,8 @@ int getbtns(void){
     return ((PORTD >> 5) & 0x7);
 
 }
+
+int but1(void){
+
+  return ((PORTF) & 0x2);
+}
