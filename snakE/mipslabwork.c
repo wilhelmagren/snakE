@@ -22,17 +22,19 @@
 #define PIXEL_UNIT 8
 #define NUMBER_OF_PAGES 2
 
+//srand();
+volatile int *porte = (volatile int *) 0xbf886110;
 char scoreBuffer[] = "YOUR SCORE: ";
 int difficulty = 500;
 int snakeX = 15;
 int snakeY = 15;
-int foodX = 16;
-int foodY = 16;
+int foodX = 20;
+int foodY = 20;
 int posFood;
-int velocity;
+int velocity = 0;
 int posArray;
 int posPage;
-int score = 0;
+int score = 254;
 /* Interrupt Service Routine */
 void user_isr( void ){
   return;
@@ -62,20 +64,6 @@ int get_posFood(){
 void set_pixel(int snakeX, int snakeY){
   int i = snakeY / PIXEL_UNIT;
   display[snakeX + i*32] =  1 << (snakeY - i * PIXEL_UNIT);
-}
-
-void move_constant(){
-  if(velocity = -1)
-    snakeX--;
-
-  if(velocity = 1)
-    snakeX++;
-
-  if(velocity = -32)
-    snakeY--;
-
-  if(velocity = 32)
-    snakeY++;
 }
 
 void update(){
@@ -120,7 +108,7 @@ void set_difficulty(){
       difficulty = 100;
 
     if(getsw() == 0x1)
-      difficulty = 500;
+      difficulty = 200;
   }
 }
 
@@ -128,56 +116,51 @@ void buttons(){
   int but;
   if(but = getbtns()){
     if(but & 4){
+      velocity = -1;
       move_Left();
     }
     if(but & 2){
-      move_Right();
+      velocity = 32;
+      move_Down();
     }
     if(but & 1){
-      move_Down();
+      velocity = -32;
+      move_Up();
     }
   }
 
   if(but = btn1()){
-    move_Up();
-
-
-  }
-}
-
-void check_page(){
-  switch (snakeX/WIDTH){
-    case 0:
-      posPage = 0;
-      break;
-
-    case 1:
-      posPage = WIDTH;
-      snakeY -= WIDTH;
-      break;
-
-    case 2:
-      posPage = WIDTH*2;
-      snakeY -= WIDTH;
-      break;
-
-    case 3:
-      posPage = WIDTH*3;
-      snakeY -= WIDTH;
-      break;
+    velocity = 1;
+    move_Right();
   }
 }
 
 void food(){
-  foodX = rand() % 31;
-  foodY = rand() % 31;
   set_pixel(foodX,foodY);
-  score += 10;
+  *porte += 0x01;
+  score++;
 }
 
 void check_collide(){
-  if(posArray == posFood)
+  if(snakeX == foodX && snakeY == foodY){
+    foodX = rand() % 31;
+    foodY = rand() % 31;
     food();
+  }
+}
+
+void move_Constant(){
+  if(velocity == 1)
+    snakeX++;
+
+  if(velocity == -1)
+    snakeX--;
+
+  if(velocity == 32)
+    snakeY++;
+
+  if(velocity == -32)
+    snakeY--;
 }
 
 void display_clear(int amount, uint8_t screen[]){
@@ -187,12 +170,41 @@ void display_clear(int amount, uint8_t screen[]){
   }
 }
 
+void reset(){
+  snakeX = 15;
+  snakeY = 15;
+  foodX = rand() % 31;
+  foodY = rand() % 31;
+  velocity = 0;
+  *porte = 0x0;
+  score = 0;
+  display_clear(NUMBER_OF_PAGES*2,death);
+}
+
+void game_win(){
+  if(score > 255){
+    *porte = 0xff;
+    int but;
+    while(1){
+      display_update();
+      display_string(0, "YOU WON!");
+      display_string(1, "SCORE ON LIGHTS");
+      display_string(2, "TO RESTART");
+      display_string(3, "PRESS BUTTON 1");
+      *porte += 0xA;
+
+      if(but = btn1()){
+        reset();
+        break;
+      }
+    }
+  }
+}
+
 void game_over(){
   if(snakeX < 0 || snakeX > 31 || snakeY < 0 || snakeY > 31){
     int i;
     int but;
-    char c = (char) score;
-    scoreBuffer[11] = c;
     for(i = 0; i < WIDTH*NUMBER_OF_PAGES; i += WIDTH){
       display_image(i, clear);
     }
@@ -204,9 +216,7 @@ void game_over(){
       display_string(3, "PRESS BUTTON 1");
 
       if(but = btn1()){
-        snakeX = 15;
-        snakeY = 15;
-        display_clear(NUMBER_OF_PAGES*2,death);
+        reset();
         break;
       }
     }
@@ -216,24 +226,18 @@ void game_over(){
 /* This function is called repetitively from the main program */
 void labwork( void )
 {
-  volatile int *porte = (volatile int *) 0xbf886110;
-  *porte += 0x01;
-
   set_difficulty();
   delay(difficulty);
   game_over();
-  check_page();
+  game_win();
   buttons();
   display_clear(NUMBER_OF_PAGES/2,clear);
-  //move_constant();
+  move_Constant();
   get_posSnake();
   get_posFood();
   check_collide();
-  update();
+  set_pixel(foodX, foodY);
   set_pixel(snakeX, snakeY);
+  update();
   display_image(posPage,display);
-  //move_snakeConstant();
-  //display_image(posPage,display);
-  //move_nextPage();
-  //display_string(0,score);
 }
