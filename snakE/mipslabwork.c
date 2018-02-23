@@ -13,6 +13,8 @@
 #include <stdint.h>   /* Declarations of uint_32 and the like */
 #include <pic32mx.h>  /* Declarations of system-specific addresses etc */
 #include "mipslab.h"  /* Declatations for these labs */
+#include <stdlib.h>   /*includes standardlibrary to use function rand()*/
+#include "standard.h" /*includes the use of functions rand()*/
 
 #define HEIGHT 4
 #define WIDTH 32
@@ -20,11 +22,13 @@
 #define PIXEL_UNIT 8
 #define NUMBER_OF_PAGES 2
 
+char scoreBuffer[] = "YOUR SCORE: ";
 int difficulty = 500;
 int snakeX = 15;
 int snakeY = 15;
-//int foodX = 15;
-//int foodY = 15;
+int foodX = 16;
+int foodY = 16;
+int posFood;
 int velocity;
 int posArray;
 int posPage;
@@ -46,12 +50,13 @@ void labinit( void ){
 }
 
 int get_posSnake(){
-  int i;
-  for(i = 0; i < SIZE_OF_PAGE; i++){
-    if(display[i] != 0)
-      posArray = i;
-    }
-  return posArray;
+  int i = snakeY / PIXEL_UNIT;
+  return posArray = snakeX + i*32;
+}
+
+int get_posFood(){
+  int i = foodY / PIXEL_UNIT;
+  return posFood = foodX + i*32;
 }
 
 void set_pixel(int snakeX, int snakeY){
@@ -73,10 +78,10 @@ void move_constant(){
     snakeY++;
 }
 
-void snake_clear(){
+void update(){
   int j;
   for(j = 0; j < SIZE_OF_PAGE; j++){
-    if(j != posArray)
+    if(j != posArray && j != posFood)
       display[j] = 0;
   }
 }
@@ -163,6 +168,18 @@ void check_page(){
   }
 }
 
+void food(){
+  foodX = rand() % 31;
+  foodY = rand() % 31;
+  set_pixel(foodX,foodY);
+  score += 10;
+}
+
+void check_collide(){
+  if(posArray == posFood)
+    food();
+}
+
 void display_clear(int amount, uint8_t screen[]){
   int i;
   for(i = 0; i < amount*WIDTH; i += 32){
@@ -174,13 +191,16 @@ void game_over(){
   if(snakeX < 0 || snakeX > 31 || snakeY < 0 || snakeY > 31){
     int i;
     int but;
+    char c = (char) score;
+    scoreBuffer[11] = c;
     for(i = 0; i < WIDTH*NUMBER_OF_PAGES; i += WIDTH){
       display_image(i, clear);
     }
     while(1){
       display_update();
       display_string(0, "GAME OVER!");
-      display_string(2, "TO RESTART:");
+      display_string(1, scoreBuffer);
+      display_string(2, "TO RESTART");
       display_string(3, "PRESS BUTTON 1");
 
       if(but = btn1()){
@@ -205,11 +225,12 @@ void labwork( void )
   check_page();
   buttons();
   display_clear(NUMBER_OF_PAGES/2,clear);
-  snake_clear();
-  move_constant();
+  //move_constant();
   get_posSnake();
+  get_posFood();
+  check_collide();
+  update();
   set_pixel(snakeX, snakeY);
-  //food();
   display_image(posPage,display);
   //move_snakeConstant();
   //display_image(posPage,display);
