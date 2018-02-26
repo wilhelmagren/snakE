@@ -16,16 +16,21 @@
 #include <stdlib.h>   /*includes standardlibrary to use function rand()*/
 #include "standard.h" /*includes the use of functions rand()*/
 
+/*Defines the size of the display, which the game is displayed on.
+*The number of pixels on the displayed screen is 32x32,
+*but horisontally we represent 8 pixels with a block that is 8pixels since one element in the char array represents 8 pixels horisontally on the OLED.
+*- Written by Eric Bröndum & Wilhelm Ågren*/
 #define HEIGHT 4
 #define WIDTH 32
 #define SIZE_OF_PAGE HEIGHT*WIDTH
 #define PIXEL_UNIT 8
 #define NUMBER_OF_PAGES 2
 
-//srand();
+/*Global variables that the game utilizes
+*- Written by Eric Bröndum & Wilhelm Ågren*/
 volatile int *porte = (volatile int *) 0xbf886110;
-char scoreBuffer[] = "YOUR SCORE: ";
 int difficulty = 500;
+int stageOfGame = 0;
 int snakeX = 15;
 int snakeY = 15;
 int foodX = 20;
@@ -33,39 +38,61 @@ int foodY = 20;
 int posFood;
 int velocity = 0;
 int posArray;
-int posPage;
 int score = 0;
-/* Interrupt Service Routine */
+
+/* Interrupt Service Routine  */
 void user_isr( void ){
   return;
 }
 
 /* Lab-specific initialization goes here */
-void labinit( void ){
 
+/*Set up the buttons and switches to be inputs, and output on the lights.
+*Implements a timer.
+*- Written by Eric Bröndum & Wilhelm Ågren*/
+void labinit( void ){
   volatile int *trise = (volatile int *) 0xbf886100;
   *trise = *trise & 0x00;
   TRISE = TRISE & 0x0fe0;
   TRISF = TRISF & 0x2;
-
+  PR2 = (80000000/256)/10;
+  T2CON = 0x70;
+  TMR2 = 0;
+  T2CONSET = 0x8000;
   return;
 }
 
+/*Functions that returns a generated number based on timer. number is being used in srand() - Written by Eric Bröndum & Wilhelm Ågren*/
+int feedSeed(){
+  return TMR2;
+}
+
+/*Function that gets the position of the snake in the char array "display" (located in file mipslabdata.h),
+*represents the position and is used to move the snake around.
+*- Written by Eric Bröndum & Wilhelm Ågren*/
 int get_posSnake(){
   int i = snakeY / PIXEL_UNIT;
   return posArray = snakeX + i*32;
 }
 
+/*Function that gets the position of the food in the char array "display" (located in file mipslabdata.h),
+*represents the position and is used to both display the food and to generate a new position for it.
+*- Written by Eric Bröndum & Wilhelm Ågren*/
 int get_posFood(){
   int i = foodY / PIXEL_UNIT;
   return posFood = foodX + i*32;
 }
 
-void set_pixel(int snakeX, int snakeY){
-  int i = snakeY / PIXEL_UNIT;
-  display[snakeX + i*32] =  1 << (snakeY - i * PIXEL_UNIT);
+/*Function that turns off the specific litght that represents either the food or snake
+*in the char array "display" and on the OLEDdisplay aswell.
+*- Written by Eric Bröndum & Wilhelm Ågren*/
+void set_pixel(int x, int y){
+  int i = y / PIXEL_UNIT;
+  display[x + i*32] =  1 << (y - i * PIXEL_UNIT);
 }
 
+/*Resets the lights that the snake or food is not represented on in the char array "display".
+*- Written by Eric Bröndum & Wilhelm Ågren*/
 void update(){
   int j;
   for(j = 0; j < SIZE_OF_PAGE; j++){
@@ -74,30 +101,41 @@ void update(){
   }
 }
 
+/*Turns the snake to the left, also changes it's velocity so it keeps moving constantly to the left untill other functions are called.
+*- Written by Eric Bröndum & Wilhelm Ågren*/
 void move_Left(){
   velocity = -1;
   snakeX--;
   posArray += velocity;
 }
 
+/*Works the same as the function move_left, but moves it to the Right instead.
+*- Written by Eric Bröndum & Wilhelm Ågren*/
 void move_Right(){
   velocity = 1;
   snakeX++;
   posArray += velocity;
 }
 
+/*Moves the snake up on the screen, does this by changing the position of the snake in the array by -32, since the width of the screen is 32bits.
+*- Written by Eric Bröndum & Wilhelm Ågren*/
 void move_Up(){
   velocity = -32;
   snakeY--;
   posArray += velocity;
 }
 
+/*Works the same as function move_Up, but move it down instead by adding 32 to the variable posArray
+*- Written by Eric Bröndum & Wilhelm Ågren*/
 void move_Down(){
   velocity = 32;
   snakeY++;
   posArray += velocity;
 }
 
+/*Reads the values of the switches 1,2, & 3 and represents them with a binary number.
+*Based on the binary number, a difficulty is chosen, may be switched while playing
+*- Written by Eric Bröndum & Wilhelm Ågren*/
 void set_difficulty(){
   int sw;
   if(sw = getsw()){
@@ -112,35 +150,40 @@ void set_difficulty(){
   }
 }
 
+/*Function that updates the movement of the snake based on which button is pressed.
+*Does this by calling the move_(DIRECTION) functions.
+*- Written by Eric Bröndum & Wilhelm Ågren*/
 void buttons(){
   int but;
   if(but = getbtns()){
     if(but & 4){
-      velocity = -1;
       move_Left();
     }
     if(but & 2){
-      velocity = 32;
       move_Down();
     }
     if(but & 1){
-      velocity = -32;
       move_Up();
     }
   }
 
   if(but = btn1()){
-    velocity = 1;
     move_Right();
   }
 }
 
+/*Function that is called the function check_collide occurs.
+*Creates a new random position for the food by using function rand() & increases the score represented on the lights by 1
+*- Written by Eric Bröndum & Wilhelm Ågren*/
 void food(){
   set_pixel(foodX,foodY);
   *porte += 0x01;
   score++;
 }
 
+/*Function that is constantly called in labwork to check if you eat the food or not.
+*Makes use of function food()
+*- Written by Eric Bröndum & Wilhelm Ågren*/
 void check_collide(){
   if(snakeX == foodX && snakeY == foodY){
     foodX = rand() % 31;
@@ -149,6 +192,9 @@ void check_collide(){
   }
 }
 
+/*Moves the snake constantly based on what button was previously pressed,
+*implements this by checking the current velocity/direction that is decided in functions move_(DIRECTION)
+*- Written by Eric Bröndum & Wilhelm Ågren*/
 void move_Constant(){
   if(velocity == 1)
     snakeX++;
@@ -163,6 +209,10 @@ void move_Constant(){
     snakeY--;
 }
 
+/*Function that clears the screen, is called both when you reset the game and each time labwork calls.
+*Hence the use of parameters that declare what type of screen you want to clear with and which part of the screen.
+*By using these parameters we can recycle the function and not have to make a specific one for when we either wanna reset the game or update the screen.
+*- Written by Eric Bröndum & Wilhelm Ågren*/
 void display_clear(int amount, uint8_t screen[]){
   int i;
   for(i = 0; i < amount*WIDTH; i += 32){
@@ -170,6 +220,9 @@ void display_clear(int amount, uint8_t screen[]){
   }
 }
 
+/*Restores all the starting values for the game,
+*including: position of snake, position of food, velocity, score and clears the screen
+*- Written by Eric Bröndum & Wilhelm Ågren*/
 void reset(){
   snakeX = 15;
   snakeY = 15;
@@ -180,6 +233,9 @@ void reset(){
   display_clear(NUMBER_OF_PAGES*2,death);
 }
 
+/*Sort of unnecessary function, is always called but only used if you achieved the highest score possible,
+*which is score of 256, or 2^8 , or 11111111 on the lights
+*- Written by Eric Bröndum & Wilhelm Ågren*/
 void game_win(){
   if(score > 255){
     int but;
@@ -197,6 +253,28 @@ void game_win(){
   }
 }
 
+/*Used to generated a seed that is necessary for the rand() function to work properly.
+*It achieves this by taking the value of the timer when the player starts the game by pressing button 1 on the IO-Shield.
+*It calls the function feedSeed() and thereby gives it a pseudo-random value to use as reference.
+*- Written by Eric Bröndum & Wilhelm Ågren*/
+void startup(){
+  display_update();
+  display_string(0, "WELCOME TO");
+  display_string(1, "bitChomper v0.9");
+  display_string(2, "To start");
+  display_string(3, "press BUTTON 1");
+  int but;
+  if(but = btn1()){
+    srand(feedSeed());
+    reset();
+    stageOfGame = 1;
+  }
+}
+
+/*Checks if the player moves out of the screen represented by the char array "display" in file mipslabdata.c
+*If the if statement is true, then you first clear the screen entirely and then display text to guide the player to restart the game.
+*If the player chooses to restart the game, the function reset() will be called.
+*- Written by Eric Bröndum & Wilhelm Ågren*/
 void game_over(){
   if(snakeX < 0 || snakeX > 31 || snakeY < 0 || snakeY > 31){
     int i;
@@ -207,7 +285,7 @@ void game_over(){
     while(1){
       display_update();
       display_string(0, "GAME OVER!");
-      display_string(1, scoreBuffer);
+      display_string(1, "SCORE ON LIGHTS");
       display_string(2, "TO RESTART");
       display_string(3, "PRESS BUTTON 1");
 
@@ -220,20 +298,33 @@ void game_over(){
 }
 
 /* This function is called repetitively from the main program */
-void labwork( void )
-{
-  set_difficulty();
-  delay(difficulty);
-  game_over();
-  game_win();
-  buttons();
-  display_clear(NUMBER_OF_PAGES/2,clear);
-  move_Constant();
-  get_posSnake();
-  get_posFood();
-  check_collide();
-  set_pixel(foodX, foodY);
-  set_pixel(snakeX, snakeY);
-  update();
-  display_image(posPage,display);
+
+/*Main function that the games basic functions are called in,
+*Uses switch case to declare in what state the game is in, either start menu or playing.
+*- Written by Eric Bröndum & Wilhelm Ågren*/
+void snakE( void ){
+  switch(stageOfGame){
+    case 0:
+      startup();
+    break;
+
+    case 1:
+      while(1){
+        set_difficulty();
+        delay(difficulty);
+        game_over();
+        game_win();
+        buttons();
+        display_clear(NUMBER_OF_PAGES/2,clear);
+        move_Constant();
+        get_posSnake();
+        get_posFood();
+        check_collide();
+        set_pixel(foodX, foodY);
+        set_pixel(snakeX, snakeY);
+        update();
+        display_image(0,display);
+      }
+      break;
+  }
 }
