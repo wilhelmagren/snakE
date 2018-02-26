@@ -34,7 +34,7 @@ int posFood;
 int velocity = 0;
 int posArray;
 int posPage;
-int score = 254;
+int score = 0;
 /* Interrupt Service Routine */
 void user_isr( void ){
   return;
@@ -177,13 +177,11 @@ void reset(){
   foodY = rand() % 31;
   velocity = 0;
   *porte = 0x0;
-  score = 0;
   display_clear(NUMBER_OF_PAGES*2,death);
 }
 
 void game_win(){
   if(score > 255){
-    *porte = 0xff;
     int but;
     while(1){
       display_update();
@@ -191,8 +189,6 @@ void game_win(){
       display_string(1, "SCORE ON LIGHTS");
       display_string(2, "TO RESTART");
       display_string(3, "PRESS BUTTON 1");
-      *porte += 0xA;
-
       if(but = btn1()){
         reset();
         break;
